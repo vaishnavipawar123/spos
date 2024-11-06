@@ -1,127 +1,125 @@
 #include<iostream>
-#include<string.h>
+#include<string>
+#include<climits>
+#include<vector>
 using namespace std;
 
-void SJF_pre(int n,int BT[],string p[],int AT[])
-{
-    int Finish_time[10],TA[10],WT[10];
-    float cnt=0,count=0;
-    for (int i = 0; i<n; i++)
-    {
-        if(i==0)
-        {   Finish_time[i]=BT[i]+AT[i];
-            TA[i]=Finish_time[i]-AT[i];
-        }
-        else
-        {
-            Finish_time[i]=BT[i]+Finish_time[i-1];
-            TA[i]=Finish_time[i]-AT[i];
-        }
-    }
-    cout<<endl;
-    cout<<"Premptive"<<endl;
-    cout<<"GANTT-CHART"<<endl;
-    cout<<endl;
-    for(int i=0;i<n;i++)
-    {
-        cout<<"  "<<p[i]<<"  ";
-    }
-    cout<<endl;
-    cout<<AT[0];
-    int d=BT[0]+AT[0];
-    for(int i=0;i<n;i++)
-    {
-        cout<<"    "<<d;
-        d=d+BT[i+1];
-    }
-    cout<<endl;
-    cout<<"TURN-AROUND TIME "<<endl;
-    for (int i = 0; i<n; i++)
-    {
-        cout<<"Turn-around time of "<<p[i]<<"= "<<TA[i]<<" msec"<<endl;
-    }
-    for (int i = 0; i<n; i++)
-    {
-        cnt+=TA[i];
-    }
-    cnt=cnt/n;
-    cout<<"Average Turn-around time of = "<<cnt<<" msec"<<endl;
-    cout<<endl;
-    for (int i = 0; i<n; i++)
-    {
-        WT[i]=TA[i]-BT[i];
-        cout<<"Waiting time of "<<p[i]<<"= "<<WT[i]<<" msec"<<endl;
-    }
-    for (int i = 0; i<n; i++)
-    {
-        count+=WT[i];
-    }
-    count=count/n;
-    cout<<"Average Waiting time of = "<<count<<" msec"<<endl;
-}
+void SJF_pre(int n, int BT[], string p[], int AT[]) {
+    int RT[10], WT[10], TA[10], FT[10];
+    bool complete[10] = {false};
+    vector<string> gantt_chart;  // To store the Gantt chart execution sequence
 
-int main()
-{
-    int n,s, BT[10],AT[10];
-    string p[10];
-    cout<<"Enter the number of process: ";
-    cin>>s;
-    for (int i = 0; i<s; i++)
-    {
-        cout<<"Enter the process name: ";
-        cin>>p[i];
-        cout<<"Enter the Burst time :";
-        cin>>BT[i];
-        cout<<"Enter the Arrival time : ";
-        cin>>AT[i];
-        if(AT[i]!=0)
-        {
-            if(i>1)
-            {
-                if(BT[i]<BT[i-1])
-                {
-                    int c=BT[i];
-                    string q=p[i];
-                    BT[i]=BT[i-1];
-                    p[i]=p[i-1];
-                    BT[i-1]=c;
-                    p[i-1]=q;
-                }
+    for (int i = 0; i < n; i++) RT[i] = BT[i];  // Remaining times are initialized to burst times
+    
+    int time = 0, completed = 0, min_time, shortest = -1;
+    while (completed < n) {
+        min_time = INT_MAX;
+
+        // Select the shortest process available at the current time
+        for (int i = 0; i < n; i++) {
+            if (AT[i] <= time && !complete[i] && RT[i] < min_time) {
+                shortest = i;
+                min_time = RT[i];
             }
         }
+
+        if (shortest == -1) { // No process is available, CPU is idle
+            gantt_chart.push_back("Idle");
+            time++;
+            continue;
+        }
+
+        // Process the selected shortest job
+        gantt_chart.push_back(p[shortest]);
+        RT[shortest]--;
+        time++;
+
+        // If the process is completed
+        if (RT[shortest] == 0) {
+            completed++;
+            complete[shortest] = true;
+            FT[shortest] = time;
+            TA[shortest] = FT[shortest] - AT[shortest];
+            WT[shortest] = TA[shortest] - BT[shortest];
+        }
     }
-    SJF_pre(s,BT,p,AT);
-    return 0;}
+
+    // Output Gantt Chart
+    cout << "\nPreemptive SJF\n";
+    cout << "GANTT-CHART\n\n";
+    for (const auto& process : gantt_chart) {
+        cout << "  " << process << "  ";
+    }
+    cout << endl;
+
+    for (int i = 0; i <= gantt_chart.size(); i++) {
+        cout << i << "   ";
+    }
+    cout << "\n\n";
+
+    // Output Turnaround and Waiting Times
+    float total_TA = 0, total_WT = 0;
+    cout << "TURN-AROUND TIME\n";
+    for (int i = 0; i < n; i++) {
+        cout << "Turn-around time of " << p[i] << " = " << TA[i] << " msec" << endl;
+        total_TA += TA[i];
+    }
+    cout << "Average Turn-around time = " << total_TA / n << " msec\n\n";
+
+    cout << "WAITING TIME\n";
+    for (int i = 0; i < n; i++) {
+        cout << "Waiting time of " << p[i] << " = " << WT[i] << " msec" << endl;
+        total_WT += WT[i];
+    }
+    cout << "Average Waiting time = " << total_WT / n << " msec\n";
+}
+
+int main() {
+    int s, BT[10], AT[10];
+    string p[10];
+    cout << "Enter the number of processes: ";
+    cin >> s;
+
+    for (int i = 0; i < s; i++) {
+        cout << "Enter the process name: ";
+        cin >> p[i];
+        cout << "Enter the Burst time: ";
+        cin >> BT[i];
+        cout << "Enter the Arrival time: ";
+        cin >> AT[i];
+    }
+
+    SJF_pre(s, BT, p, AT);
+    return 0;
+}
 
 
-//INPUT:
-Enter the number of processes: 3
+// Enter the number of processes: 3
+// Enter the process name: P1
+// Enter the Burst time: 6
+// Enter the Arrival time: 0
+// Enter the process name: P2
+// Enter the Burst time: 4
+// Enter the Arrival time: 1
+// Enter the process name: P3
+// Enter the Burst time: 2
+// Enter the Arrival time: 2
 
-Enter the process name: P1
-Enter the Burst Time: 8
-Enter the Arrival Time: 0
+// Preemptive SJF
+// GANTT-CHART
 
-Enter the process name: P2
-Enter the Burst Time: 4
-Enter the Arrival Time: 1
+//   P1   P2   P2   P3   P3   P2   P1   P1   P1   P1   P1  
+// 0   1   2   3   4   5   6   7   8   9  10  11  
 
-Enter the process name: P3
-Enter the Burst Time: 9
-Enter the Arrival Time: 2
+// TURN-AROUND TIME
+// Turn-around time of P1 = 11 msec
+// Turn-around time of P2 = 6 msec
+// Turn-around time of P3 = 3 msec
+// Average Turn-around time = 6.66667 msec
 
+// WAITING TIME
+// Waiting time of P1 = 5 msec
+// Waiting time of P2 = 2 msec
+// Waiting time of P3 = 1 msec
+// Average Waiting time = 2.66667 msec
 
-//OUTPUT:
-Gantt Chart:
- P2  P1  P3 
-Time:  0    1    5    9 
-
-Turnaround and Waiting Times:
-Turnaround time of P1 = 8 ms
-Waiting time of P1 = 0 ms
-Turnaround time of P2 = 3 ms
-Waiting time of P2 = 0 ms
-Turnaround time of P3 = 11 ms
-Waiting time of P3 = 2 ms
-
-Average Turnaround Time = 7 ms
-Average Waiting Time = 0.666667 ms
