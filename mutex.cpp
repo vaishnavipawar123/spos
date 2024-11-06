@@ -1,148 +1,106 @@
-#include<iostream>
-using namespace std;
-class rr
-{
-    public:
-        string pr[20];
-        int n,tq,bt[20];
-        string temp[20];
-        int tempbt[20],ttime[20];
-        int k;
-        void ganttchart(string pr[], int bt[], int tq, int n)
-        {
-            
-            string remainpr[20];
-            int remainbt[20];
-            int btime;
-            tempbt[0]=0;
-            for(int i=0;i<n;i++)
-            {
-                remainpr[i]=pr[i];
-            }
-            for(int i=0;i<n;i++)
-            {
-                remainbt[i]=bt[i];
-            }
-            for(int i=0,j=n;i!=j;i++)
-            {
-                if(remainbt[i]<=tq)
-                {
-                    temp[i]=remainpr[i];
-                    tempbt[i+1]=tempbt[i]+remainbt[i];
-                }
-                else
-                {
-                    btime=remainbt[i]-tq;     
-                    temp[i]=remainpr[i];
-                    tempbt[i+1]=tempbt[i]+tq;
-                    remainpr[j]=remainpr[i];
-                    remainbt[j]=btime;
-                    j++;
-                    k=j;
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <vector>
+#include <chrono>
+#include <random>
 
-                }
-            
-            }
-            cout<<"\n Gantt Chart"<<endl;
-            cout<<"   ";
-            for(int i=0;i<k;i++)
-            {
-                cout<<temp[i]<<"      ";
-            }
-            cout<<endl;
-            for(int i=0;i<=k;i++)
-            {
-                cout<<tempbt[i]<<"      ";
-            }
+class ReaderWriter {
+private:
+    int readerCount;  // Number of active readers
+    std::mutex mtx;   // Mutex for critical section
+    std::condition_variable cv;  // Condition variable for writer signaling
+
+public:
+    ReaderWriter() : readerCount(0) {}
+
+    void reader(int id) {
+        std::unique_lock<std::mutex> lock(mtx);
+        // Increment the number of readers
+        readerCount++;
+        if (readerCount == 1) {
+            // If first reader, wait until no writers
+            cv.wait(lock, [this]() { return readerCount == 0; });
         }
-        void turnaround(string pr[], int n)
-        {
-            int AT =0;
-            int tt=0;
-            int sum=0;
-            cout<<"\n"<<endl;
-            for(int i=0;i<n;i++)
-            {
-                for(int j=0;j<k;j++)
-                {
-                    if(pr[i]==temp[j])
-                    {
-                        tt=tempbt[j+1]-AT;
-                    }
-                }
-                ttime[i]=tt;
-                sum=sum+tt;
-                cout<<"Turn Around time of "<<pr[i]<<" is:"<<tt<<endl;
+        lock.unlock();
 
-            }
-            cout<<"\nAverage turnaround time ="<<sum/n;
+        // Simulate reading
+        std::cout << "Reader " << id << " has started reading." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(rand() % 3 + 1)); // Random sleep
+        std::cout << "Reader " << id << " has stopped reading." << std::endl;
+
+        lock.lock();
+        // Decrement the number of readers
+        readerCount--;
+        if (readerCount == 0) {
+            // If last reader, notify writers
+            cv.notify_all();
         }
-        void waiting(string pr[], int bt[], int n)
-        {
-            int sum1=0;
-            int wt;
-            cout<<"\n"<<endl;
-            for(int i=0;i<n;i++)
-            {
-                wt=ttime[i]-bt[i];
-                cout<<"Waiting time of "<<pr[i]<<" is: "<<wt<<endl;
-                sum1=sum1+wt;
+    }
 
-            }
-            cout<<"\n Average waiting time = "<<sum1/n;
-        }
-    
-    
+    void writer(int id) {
+        std::unique_lock<std::mutex> lock(mtx);
+        // Wait until there are no readers
+        cv.wait(lock, [this]() { return readerCount == 0; });
 
+        // Simulate writing
+        std::cout << "Writer " << id << " has started writing." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(rand() % 3 + 1)); // Random sleep
+        std::cout << "Writer " << id << " has stopped writing." << std::endl;
+
+        // Notify readers
+        cv.notify_all();
+    }
 };
-//void rr::ganttchart(string pr[], int bt[], int tq, int n)
 
-int main()
-{
-    rr obj;
+int main() {
+    ReaderWriter rw;
+    std::vector<std::thread> threads;
+    int choice;
 
-    string pr[20];
-    int n,tq,bt[20];
-    cout<<"ROUND ROBIN"<<endl;
-    cout<<"enter total number of process: ";
-    cin>>n;
-    for(int i=0;i<n;i++)
-    {
-        cout<<"\nEnter processes["<<i+1<<"] : ";
-        cin>>pr[i];
+    std::cout << "WELCOME to the Readers-Writers Problem Simulation" << std::endl;
+
+    while (true) {
+        std::cout << "Enter your choice: \n1) Read\n2) Write\n3) Exit\n";
+        std::cin >> choice;
+
+        if (choice == 1) {
+            // Create a reader thread
+            threads.emplace_back(&ReaderWriter::reader, &rw, threads.size() + 1);
+        } else if (choice == 2) {
+            // Create a writer thread
+            threads.emplace_back(&ReaderWriter::writer, &rw, threads.size() + 1);
+        } else if (choice == 3) {
+            break; // Exit the loop
+        } else {
+            std::cout << "Invalid choice. Please enter 1 for Read or 2 for Write." << std::endl;
+        }
+
+        // Join all threads to ensure they complete
+        for (auto& t : threads) {
+            if (t.joinable()) {
+                t.join();
+            }
+        }
     }
-    for(int i=0;i<n;i++)
-    {
-        cout<<"\nEnter B. Time of "<<pr[i]<<" : ";
-        cin>>bt[i];
-    }
-    cout<<"\nenter time quantum: ";
-    cin>>tq;
-    cout<<"\nProceses"<<"\tB.Time"<<"\tTime quantum"<<endl;
-    for(int i=0;i<n;i++)
-    {
-        cout<<pr[i]<<"\t\t"<<bt[i]<<"\t\t"<<tq<<endl;
-    }
-    obj.ganttchart(pr,bt,tq,n);
-    obj.turnaround(pr,n);
-    obj.waiting(pr,bt,n);
 
     return 0;
 }
 
 //OUTPUT:
 
-Reader-1 has started Reading
-Reader-2 has started Reading
-Reader-3 has started Reading
-Reader-4 has started Reading
-Reader-5 has started Reading
-Reader-3 has stopped Reading
-Reader-1 has stopped Reading
-Reader-2 has stopped Reading
-Reader-4 has stopped Reading
-Reader-5 has stopped Reading
-Writer-1 has started Writing
-Writer-1 has stopped Writing
-Writer-2 has started Writing
-Writer-2 has stopped Writing
+// Reader-1 has started Reading
+// Reader-2 has started Reading
+// Reader-3 has started Reading
+// Reader-4 has started Reading
+// Reader-5 has started Reading
+// Reader-3 has stopped Reading
+// Reader-1 has stopped Reading
+// Reader-2 has stopped Reading
+// Reader-4 has stopped Reading
+// Reader-5 has stopped Reading
+// Writer-1 has started Writing
+// Writer-1 has stopped Writing
+// Writer-2 has started Writing
+// Writer-2 has stopped Writing
